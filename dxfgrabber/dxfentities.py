@@ -264,6 +264,7 @@ class Attrib(Text):
         super(Attrib, self).__init__()
         self.field_length = 0
         self.tag = ""
+        self.flags = 0
 
     def setup_attributes(self, tags):
         for code, value in super(Attrib, self).setup_attributes(tags):
@@ -271,6 +272,8 @@ class Attrib(Text):
                 self.tag = value
             elif code == 73:
                 self.field_length = value
+            elif code == 70:
+                self.flags = value
             else:
                 yield code, value
 
