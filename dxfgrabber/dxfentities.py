@@ -446,6 +446,75 @@ class Polyline(DXFEntity):
             return self
 
 
+class Hatch(object):
+
+    def __init__(self):
+        super(Hatch, self).__init__()
+        self.boundary_path = None
+
+        """j
+        self.vertices = []  # set in append data
+        self.points = []  # set in append data
+        self.control_points = []  # set in append data
+        self.width = []  # set in append data
+        self.bulge = []  # set in append data
+        self.tangents = []  # set in append data
+        """
+
+        self.pattern_vertices = []  # set in append data
+        self.pattern_points = []  # set in append data
+        self.pattern_control_points = []  # set in append data
+        self.pattern_width = []  # set in append data
+        self.pattern_bulge = []  # set in append data
+        self.pattern_tangents = []  # set in append data
+
+        self.asso_flag = 0
+        self.solid_fill_flag = 0
+        self.hatch_style = 0
+        self.hatch_patttern_type = 0
+        self.hatch_pattern_angle = 0
+        self.hatch_pattern_scale = 0
+        self.hatch_pattern_double_flag = 0
+        
+        self.pixel_size = 0
+        self.seed_points = []
+
+    def setup_attributes(self, tags):
+        def get_mode():
+            flags = self.flags
+            if flags & const.POLYLINE_SPLINE_FIT_VERTICES_ADDED:
+                return 'spline2d'
+            elif flags & const.POLYLINE_3D_POLYLINE:
+                return 'polyline3d'
+            elif flags & const.POLYLINE_3D_POLYMESH:
+                return 'polymesh'
+            elif flags & const.POLYLINE_POLYFACE:
+                return 'polyface'
+            else:
+                return 'polyline2d'
+
+        for code, value in super(Hatch, self).setup_attributes(tags):
+            if code == 10:
+                self.elevation = value
+            elif code == 40:
+                self.default_start_width = value
+            elif code == 41:
+                self.default_end_width = value
+            elif code == 70:
+                self.flags = value
+            elif code == 71:
+                self.mcount = value
+            elif code == 72:
+                self.ncount = value
+            elif code == 73:
+                self.m_smooth_density = value
+            elif code == 73:
+                self.n_smooth_density = value
+            elif code == 75:
+                self.smooth_type = value
+            else:
+                yield code, value  # chain of generators
+
 class SubFace(object):
     def __init__(self, face_record, vertices):
         self._vertices = vertices
@@ -574,6 +643,10 @@ class Vertex(DXFEntity):
     def __iter__(self):
         return iter(self.location)
 
+
+class Group(DXFEntity):
+    def __init__(self):
+        super(Group, self).__init__()
 
 class Block(DXFEntity):
     def __init__(self):
