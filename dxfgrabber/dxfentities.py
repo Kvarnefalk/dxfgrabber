@@ -453,12 +453,11 @@ class Hatch(DXFEntity):
         self.boundary_path = None
 
 
-        self.pattern_vertices = []  # set in append data
-        self.pattern_points = []  # set in append data
-        self.pattern_control_points = []  # set in append data
-        self.pattern_width = []  # set in append data
-        self.pattern_bulge = []  # set in append data
-        self.pattern_tangents = []  # set in append data
+        self.pattern_line_angle = 0
+        self.pattern_line_base_point = (0,0)
+        self.pattern_line_offset = (0,0)
+        self.pattern_number_of_dash = 0
+        self.pattern_dash_length= 0
 
         self.asso_flag = 0
         self.solid_fill_flag = 0
@@ -489,6 +488,8 @@ class Hatch(DXFEntity):
             else:
                 return 'polyline2d'
 
+            is_pattern_def = False
+            is_edge_def = False
         for code, value in super(Hatch, self).setup_attributes(tags):
             if code == 70:
                 self.solid_fill_flag = value
@@ -551,7 +552,7 @@ class Hatch(DXFEntity):
                     self.edge_type = 'POLYLINE'
                     self.edge_data.dxftype = 'POLYLINE'
             elif code == 72:
-                if self.edge_data and self.edge_data.dxftype != 'POLYLINE':
+                if self.edge_type != 'POLYLINE':
                     if value == 1:
                         self.edge_type = 'LINE'
                         self.edge_data = Line()
@@ -574,6 +575,26 @@ class Hatch(DXFEntity):
             elif code == 73:
                 if self.edge_type == 'POLYLINE':
                     self.edge_data.is_closed = value
+            elif code == 91:
+                is_edge_def = True
+                is_pattern_def = False
+            elif code == 78:
+                is_edge_def = False
+                is_pattern_def = True
+            elif code == 53:
+                self.pattern_line_angle = value
+            elif code == 43:
+                self.pattern_base_point = (value, 0)
+            elif code == 44:
+                self.pattern_base_point = (self.pattern_base_point[0], value)
+            elif code == 45:
+                self.pattern_base_offset = (value, 0)
+            elif code == 46:
+                self.pattern_base_offset = (self.pattern_base_offset[0], value)
+            elif code == 79:
+                self.pattern_number_of_dash = value
+            elif code == 49:
+                self.pattern_dash_length= value
             else:
                 yield code, value  # chain of generators
 
@@ -1398,8 +1419,6 @@ def entity_factory(tags):
     dxftype = tags.get_type()
     cls = EntityTable[dxftype]  # get entity class or raise KeyError
     entity = cls()  # call constructor
-    #if dxftype == 'HATCH':
-        #print tags
     list(entity.setup_attributes(tags))  # setup dxf attributes - chain of generators
     return entity
 
