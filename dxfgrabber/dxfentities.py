@@ -446,20 +446,12 @@ class Polyline(DXFEntity):
             return self
 
 
-class Hatch(object):
+class Hatch(DXFEntity):
 
     def __init__(self):
         super(Hatch, self).__init__()
         self.boundary_path = None
 
-        """j
-        self.vertices = []  # set in append data
-        self.points = []  # set in append data
-        self.control_points = []  # set in append data
-        self.width = []  # set in append data
-        self.bulge = []  # set in append data
-        self.tangents = []  # set in append data
-        """
 
         self.pattern_vertices = []  # set in append data
         self.pattern_points = []  # set in append data
@@ -471,13 +463,17 @@ class Hatch(object):
         self.asso_flag = 0
         self.solid_fill_flag = 0
         self.hatch_style = 0
-        self.hatch_patttern_type = 0
+        self.hatch_pattern_type = 0
         self.hatch_pattern_angle = 0
         self.hatch_pattern_scale = 0
         self.hatch_pattern_double_flag = 0
         
         self.pixel_size = 0
         self.seed_points = []
+
+        self.boundary_path_type_flag = 0
+        self.edge_type = ''
+        self.edge_data = None
 
     def setup_attributes(self, tags):
         def get_mode():
@@ -494,24 +490,90 @@ class Hatch(object):
                 return 'polyline2d'
 
         for code, value in super(Hatch, self).setup_attributes(tags):
-            if code == 10:
-                self.elevation = value
-            elif code == 40:
-                self.default_start_width = value
-            elif code == 41:
-                self.default_end_width = value
-            elif code == 70:
-                self.flags = value
+            if code == 70:
+                self.solid_fill_flag = value
             elif code == 71:
-                self.mcount = value
-            elif code == 72:
-                self.ncount = value
-            elif code == 73:
-                self.m_smooth_density = value
-            elif code == 73:
-                self.n_smooth_density = value
+                self.asso_flag = value
             elif code == 75:
-                self.smooth_type = value
+                self.hatch_style = value
+            elif code == 76:
+                self.hatch_pattern_type = value
+            elif code == 52:
+                self.hatch_pattern_angle = value
+            elif code == 41:
+                self.hatch_pattern_scale  = value
+            elif code == 77:
+                self.hatch_pattern_double_flag = value
+            elif code == 47:
+                self.pixel_size = value
+            elif code == 10:
+
+                if self.edge_type == 'POLYLINE':
+                    self.edge_data.points.append((value,0))
+                elif self.edge_type == 'LINE':
+                    self.edge_data.start = ((value, 0))
+                elif self.edge_type == 'ARC':
+                    self.edge_data.center = ((value, 0))
+            elif code == 11:
+                if self.edge_type == 'LINE':
+                    self.edge_data.end = ((value, 0))
+
+            elif code == 20:
+                if self.edge_type == 'POLYLINE':
+                    self.edge_data.points[-1] = (self.edge_data.points[-1][0],
+                            value)
+                elif self.edge_type == 'LINE':
+                    self.edge_data.start = ((self.edge_data.start[0], value))
+                elif self.edge_type == 'ARC':
+                    self.edge_data.center = ((self.edge_data.center[0], 0))
+
+            elif code == 21:
+                if self.edge_type == 'LINE':
+                    self.edge_data.end = ((self.edge_data.end[0], value))
+
+            elif code == 40:
+                if self.edge_type == 'ARC':
+                    self.edge_data.radius = value
+            elif code == 50:
+                if self.edge_type == 'ARC':
+                    self.edge_data.start_angle = value
+
+            elif code == 51:
+                if self.edge_type == 'ARC':
+                    self.edge_data.end_angle = value
+            elif code == 42:
+                if self.edge_type == 'POLYLINE':
+                    self.edge_data.bulge.append(value)
+            elif code == 92:
+                self.boundary_path_type_flag = value
+                if ((value >> 2) & 1) == 1: # If polyline flag is on
+                    self.edge_data = Polyline()
+                    self.edge_type = 'POLYLINE'
+                    self.edge_data.dxftype = 'POLYLINE'
+            elif code == 72:
+                if self.edge_data and self.edge_data.dxftype != 'POLYLINE':
+                    if value == 1:
+                        self.edge_type = 'LINE'
+                        self.edge_data = Line()
+                        self.edge_data.dxftype = 'LINE'
+                    elif value == 2:
+                        self.edge_type = 'CIRC_ARC'
+                        self.edge_data = Arc()
+                        self.edge_data.dxftype = 'ARC'
+                    elif value == 3:
+                        self.edge_type = 'ELLIP_ARC'
+                        self.edge_data = Arc()
+                        self.edge_data.dxftype = 'ARC'
+                    elif value == 4:
+                        self.edge_type = 'SPLINE'
+                        self.edge_data = Polyline()
+                        self.edge_data.dxftype = 'SPLINE'
+                else:
+                    self.edge_data.has_bulge = value
+
+            elif code == 73:
+                if self.edge_type == 'POLYLINE':
+                    self.edge_data.is_closed = value
             else:
                 yield code, value  # chain of generators
 
@@ -1328,6 +1390,7 @@ EntityTable = {
     '3DSOLID': Body,
     'SURFACE': Surface,
     'PLANESURFACE': Surface,
+    'HATCH': Hatch
 }
 
 
@@ -1335,6 +1398,8 @@ def entity_factory(tags):
     dxftype = tags.get_type()
     cls = EntityTable[dxftype]  # get entity class or raise KeyError
     entity = cls()  # call constructor
+    #if dxftype == 'HATCH':
+        #print tags
     list(entity.setup_attributes(tags))  # setup dxf attributes - chain of generators
     return entity
 
